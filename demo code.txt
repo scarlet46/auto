@@ -1,0 +1,62 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+def extract_data_availability(url):
+    # 请求网页内容
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise Exception(f"Failed to load page {url}")
+    
+    # 使用 BeautifulSoup 解析网页
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # 定义需要查找的关键词
+    keywords = ["Data availability", "availability", "Deposited data", "Gene Expression Omnibus"]
+
+    extracted_info = []
+
+    # 搜索网页中的所有段落（p标签）
+    for paragraph in soup.find_all('p'):
+        text = paragraph.get_text()
+        for keyword in keywords:
+            if keyword in text:
+                # 提取关键词后面的文字，直到换行符或句子结束
+                keyword_start_index = text.find(keyword) + len(keyword)
+                remaining_text = text[keyword_start_index:].strip()
+                
+                # 分隔符是换行或句子终止符
+                stop_chars = ['\n', '.', ';']
+                for stop_char in stop_chars:
+                    remaining_text = remaining_text.split(stop_char)[0]
+
+                extracted_info.append(f"{keyword}: {remaining_text.strip()}")
+    
+    return extracted_info
+
+
+def update_dataframe_with_accession_source(df, extracted_info):
+    # 创建新的 Accession-source 列并填充提取的数据
+    df['Accession-source'] = ' '.join(extracted_info)
+    return df
+
+
+# URL of the page to scrape
+url = "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10014032/"
+
+# 提取数据
+extracted_info = extract_data_availability(url)
+print("提取到的信息:", extracted_info)
+
+# 示例数据表，您可以根据实际的文件读取替换为 pd.read_csv 或其他文件格式
+data = {
+    'Column1': [1, 2, 3],
+    'Column2': ['A', 'B', 'C']
+}
+df = pd.DataFrame(data)
+
+# 更新DataFrame
+df_updated = update_dataframe_with_accession_source(df, extracted_info)
+
+# 输出 DataFrame
+print(df_updated)
